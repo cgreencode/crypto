@@ -7,6 +7,9 @@
 // This implementation is distilled from https://tools.ietf.org/html/rfc7292
 // and referenced documents. It is intended for decoding P12/PFX-stored
 // certificates and keys for use with the crypto/tls package.
+//
+// This package is frozen. If it's missing functionality you need, consider
+// an alternative like software.sslmate.com/src/go-pkcs12.
 package pkcs12
 
 import (
@@ -262,45 +265,6 @@ func Decode(pfxData []byte, password string) (privateKey interface{}, certificat
 	}
 	if privateKey == nil {
 		return nil, nil, errors.New("pkcs12: private key missing")
-	}
-
-	return
-}
-
-// DecodeAll extracts all certificate and private keys from pfxData.
-func DecodeAll(pfxData []byte, password string) (privateKeys []interface{}, certificates []*x509.Certificate, err error) {
-	encodedPassword, err := bmpString(password)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	bags, encodedPassword, err := getSafeContents(pfxData, encodedPassword)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	for _, bag := range bags {
-		switch {
-		case bag.Id.Equal(oidCertBag):
-			certsData, err := decodeCertBag(bag.Value.Bytes)
-			if err != nil {
-				return nil, nil, err
-			}
-			certs, err := x509.ParseCertificates(certsData)
-			if err != nil {
-				return nil, nil, err
-			}
-			certificates = append(certificates, certs...)
-
-		case bag.Id.Equal(oidPKCS8ShroundedKeyBag):
-			privateKey, err := decodePkcs8ShroudedKeyBag(bag.Value.Bytes, encodedPassword)
-
-			if err != nil {
-				return nil, nil, err
-			}
-
-			privateKeys = append(privateKeys, privateKey)
-		}
 	}
 
 	return
